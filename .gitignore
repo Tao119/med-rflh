@@ -1,6 +1,9 @@
 /.venv/
 /data/*
-/models/sft/*
+/models/trained/*
 /models/base/*
-
+**/__pycache__/
+*.egg-info
 .env
+.last_model_path
+.python-version
