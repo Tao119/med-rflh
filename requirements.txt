@@ -1,0 +1,32 @@
+# requirements.txt for Python 3.11.6
+
+# --- PyTorch ---
+# CPU版でよければこのまま
+# GPU版の場合は "+cu118" などを付与してインストールコマンドを変える (詳細はPyTorch公式サイトを参照)
+torch==2.1.0
+
+# --- bitsandbytes (4bit量子化に使用) ---
+# GPUを使う場合には対応CUDA版が必要になることがあります。
+# Python 3.11対応の0.42.0を想定
+bitsandbytes==0.42.0
+
+# --- Hugging Face Transformers & PEFT (QLoRA等に使用) ---
+transformers==4.35.0
+peft==0.6.1
+
+# --- 分散学習/最適化 ---
+accelerate==0.23.0
+deepspeed==0.10.3
+
+# --- データ処理 ---
+datasets==2.13.0
+
+# --- FlashAttentionなどの高速化 (xFormers) ---
+# xformersはPythonバージョンやCUDAバージョンでビルドが変わる場合があります
+xformers==0.0.21
+
+# --- RLHF (PPO等) を行う場合 ---
+trl==0.5.0
+
+# --- その他ユーティリティ ---
+python-dotenv==1.0.0

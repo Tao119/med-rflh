@@ -1,0 +1,18 @@
+compute_environment: LOCAL_MACHINE
+distributed_type: FSDP
+
+fp16: true
+bf16: false
+mixed_precision: fp16
+machine_rank: 0
+num_processes: 8 # 8 GPUで並列学習する場合
+main_process_ip: null
+main_process_port: null
+num_machines: 1
+
+fsdp_config:
+  fsdp_min_num_params: 1e8
+  fsdp_sharding_strategy: 1
+  fsdp_auto_wrap_policy: TRANSFORMER_LAYER
+  fsdp_backward_prefetch: BACKWARD_PRE
+  fsdp_state_dict_type: FULL_STATE_DICT
