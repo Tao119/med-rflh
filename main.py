@@ -13,45 +13,23 @@ except ImportError:
     print("[WARNING] huggingface_hubがインストールされていません。")
     print("          `pip install huggingface_hub` を実行してください。")
 
-def create_or_check_venv(venv_dir="venv"):
-    """
-    venvディレクトリが無ければ作り、存在すればそのまま。
-    アクティブ化までは自動では行わず、メッセージを表示。
-    """
-    venv_path = Path(venv_dir)
-    if not venv_path.exists():
-        print("[INFO] 仮想環境がないため、作成します...")
-        subprocess.run([sys.executable, "-m", "venv", str(venv_dir)])
-    else:
-        print("[INFO] 仮想環境フォルダがすでに存在します:", venv_dir)
-    
-    if os.environ.get("VIRTUAL_ENV") is None:
-        print("[WARNING] 仮想環境がアクティブではありません。")
-        print("  source venv/bin/activate (Linux/Mac) または venv\\Scripts\\activate (Windows) でアクティブ化してください。")
-
-def install_requirements(requirements_file="requirements.txt"):
-    """
-    pip install -r requirements.txt を実行
-    """
-    if not os.path.exists(requirements_file):
-        print(f"[WARNING] {requirements_file} が見つかりません。スキップします。")
-        return
-    print(f"[INFO] pip install -r {requirements_file}")
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", requirements_file])
 
 def cmd_clone():
     """
     Hugging Faceモデルをローカルにクローン（ダウンロード）する処理
     """
-    repo_id = input("Hugging Face上のモデルRepo IDを入力してください (例: meta-llama/Llama-2-7b-hf): ").strip()
+    repo_id = input(
+        "Hugging Face上のモデルRepo IDを入力してください (例: meta-llama/Llama-2-7b-hf): ").strip()
     local_dir = input("ダウンロード先ディレクトリ (例: models/base): ").strip()
     if not local_dir:
         local_dir = "models/base"
 
     os.makedirs(local_dir, exist_ok=True)
     print(f"[INFO] {repo_id} を {local_dir} にダウンロードします...")
-    snapshot_download(repo_id=repo_id, local_dir=local_dir, resume_download=True)
+    snapshot_download(repo_id=repo_id, local_dir=local_dir,
+                      resume_download=True)
     print("[INFO] ダウンロード完了")
+
 
 def cmd_upload():
     """
@@ -61,13 +39,15 @@ def cmd_upload():
     if not local_dir or not os.path.exists(local_dir):
         print("[ERROR] 指定したディレクトリが存在しません。")
         return
-    
-    repo_id = input("アップロード先のHugging FaceのRepo ID (例: yourusername/mymodel): ").strip()
+
+    repo_id = input(
+        "アップロード先のHugging FaceのRepo ID (例: yourusername/mymodel): ").strip()
     if not repo_id:
         print("[ERROR] Repo IDが入力されていません。")
         return
 
-    private_choice = input("privateリポジトリにしますか？(y/n) [デフォルト=n]: ").strip().lower()
+    private_choice = input(
+        "privateリポジトリにしますか？(y/n) [デフォルト=n]: ").strip().lower()
     private_flag = (private_choice == "y")
 
     # Hugging Face APIを使ってリポジトリを作成（存在しなければ）
@@ -77,10 +57,11 @@ def cmd_upload():
     except Exception as e:
         print(f"[ERROR] リポジトリ作成に失敗しました: {e}")
         return
-    
+
     # フォルダをアップロード
     commit_message = "Add model"
-    print(f"[INFO] {local_dir} を {repo_id} にアップロードします (private={private_flag}).")
+    print(
+        f"[INFO] {local_dir} を {repo_id} にアップロードします (private={private_flag}).")
     try:
         api.upload_folder(
             folder_path=local_dir,
@@ -91,6 +72,7 @@ def cmd_upload():
         print(f"URL: https://huggingface.co/{repo_id}")
     except Exception as e:
         print(f"[ERROR] アップロード失敗: {e}")
+
 
 def cmd_train():
     """
@@ -112,6 +94,7 @@ def cmd_train():
         print(f"[INFO] RLHFを {epochs} エポックで実行. データ: {data_path}")
         # 実際の学習ロジック or scripts/train_rlhf.py を呼ぶなど
 
+
 def cmd_test():
     """
     モデル推論をテストするサンプル処理。
@@ -124,6 +107,7 @@ def cmd_test():
             break
         # 仮の応答
         print("Bot> ... (応答)")
+
 
 def main_menu():
     """
@@ -138,7 +122,7 @@ def main_menu():
         print("[exit] 終了")
 
         cmd = input("コマンドを入力: ").strip().lower()
-        
+
         if cmd == "clone":
             cmd_clone()
         elif cmd == "upload":
@@ -153,10 +137,10 @@ def main_menu():
         else:
             print("[ERROR] 無効なコマンドです。")
 
+
 def main():
-    create_or_check_venv("venv")
-    install_requirements("requirements.txt")
     main_menu()
+
 
 if __name__ == "__main__":
     main()
