@@ -1,5 +1,6 @@
 /.venv/
 /data/*
-/models/*
+/models/sft/*
+/models/base/*
 
 .env
