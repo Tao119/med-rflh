@@ -4,7 +4,7 @@ import sys
 import time
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch
-from med_rlhf.scripts.utils.model_utils import load_last_model_path, save_last_model_path
+from med_rlhf.scripts.utils.model_utils import load_last_model_path, save_last_model_path, resolve_model_path
 import torch
 
 
@@ -22,9 +22,13 @@ def spinner(stop_event):
 def test_model():
     """モデルのテスト（対話形式）"""
     try:
-        # モデルパスの取得
         last_model_path = load_last_model_path()
-        model_path = input(f"テストするモデルのパスを指定してください (デフォルト: {last_model_path or '最後に使用したモデルがありません'}): ").strip()
+        user_input = input(
+            f"テストするモデルのパスを指定してください (デフォルト: {last_model_path or '最後に使用したモデルがありません'}): ").strip()
+
+        model_path = resolve_model_path(
+            user_input) if user_input else last_model_path
+
         if not model_path:
             model_path = last_model_path
             if not model_path:
@@ -62,7 +66,8 @@ def test_model():
 
             # スピナー開始
             stop_spinner = threading.Event()
-            spinner_thread = threading.Thread(target=spinner, args=(stop_spinner,))
+            spinner_thread = threading.Thread(
+                target=spinner, args=(stop_spinner,))
             spinner_thread.start()
 
             # モデルによる生成
