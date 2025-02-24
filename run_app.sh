@@ -6,7 +6,7 @@ export PYTHONWARNINGS="ignore::FutureWarning"
 # ================================
 # 設定
 # ================================
-REQUIRED_PYTHON_VERSION="3.12"
+REQUIRED_PYTHON_VERSION="3.11"
 VENV_DIR=".venv"
 DEFAULT_MODEL_REPO="rinna/deepseek-r1-distill-qwen2.5-bakeneko-32b"
 DEFAULT_MODEL_DIR="models/base/rinna-deepseek-r1-distill-qwen2.5-bakeneko-32b"
@@ -44,6 +44,7 @@ install_dependencies_linux() {
     echo "[INFO] (Linux) 以下の依存関係をインストールします: ${DEPENDENCIES[*]}"
     sudo apt update
     sudo apt install -y "${DEPENDENCIES[@]}"
+    sudo apt-get install -y libstdc++6
 }
 
 install_dependencies_mac() {
@@ -116,25 +117,59 @@ fi
 # 5. 必要なPythonパッケージのインストール
 # ================================
 echo "[INFO] pip, setuptools, wheel をアップグレードします..."
-pip install --upgrade pip setuptools wheel > /dev/null 2>&1 && echo "[INFO] パッケージが最新です。"
+pip install --quiet  --upgrade pip setuptools wheel > /dev/null 2>&1 && echo "[INFO] パッケージが最新です。"
+pip cache purge
+
 
 # ================================
 # 6. GPU/CPU 環境の確認と依存関係のインストール
 # ================================
 echo "[INFO] GPU 環境の有無を確認しています..."
-if python -c "import torch; print(torch.cuda.is_available())" 2>/dev/null | grep -q "True"; then
-    echo "[INFO] GPU 環境が検出されました。GPU バージョンをインストールします。"
-    pip install .[gpu] --quiet && echo "[INFO] GPU 依存関係のインストールが完了しました。"
+
+# nvidia-smi が存在するか確認
+if command -v nvidia-smi &> /dev/null; then
+    echo "[INFO] nvidia-smi が見つかりました。GPU を確認中..."
+    GPU_AVAILABLE=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
+
+    if [ "$GPU_AVAILABLE" -ge 1 ]; then
+        echo "[INFO] ✅ GPU 環境が検出されました ($GPU_AVAILABLE 台)。GPU バージョンをインストールします。"
+
+        # GPU用の依存関係を pyproject.toml からインストール
+        pip install bitsandbytes --no-build-isolation --no-cache-dir --quiet
+        pip install flash-attn --no-build-isolation --no-cache-dir --quiet
+        pip install triton --quiet  --no-build-isolation --no-cache-dir  --quiet && echo "[INFO] tritonのインストールが完了しました。"
+        pip install --use-deprecated=legacy-resolver  --no-cache-dir .[gpu] --quiet --extra-index-url https://download.pytorch.org/whl/cu121 && echo "[INFO] ✅ GPU 依存関係のインストール完了"
+
+
+    else
+        echo "[WARNING] ❌ nvidia-smi は見つかりましたが、GPU は検出されませんでした。CPU バージョンをインストールします。"
+        pip install --use-deprecated=legacy-resolver  .[cpu] --quiet && echo "[INFO] ✅ CPU 依存関係のインストール完了"
+    fi
 else
-    echo "[INFO] GPU が見つかりません。CPU バージョンをインストールします。"
-    pip install .[cpu] --quiet && echo "[INFO] CPU 依存関係のインストールが完了しました。"
+    echo "[WARNING] ❌ nvidia-smi が見つかりません。CPU バージョンをインストールします。"
+    pip install --use-deprecated=legacy-resolver  .[cpu] --quiet && echo "[INFO] ✅ CPU 依存関係のインストール完了"
 fi
 
 # ================================
-# 7. Accelerate 設定
+# 7. Accelerate の設定
 # ================================
-echo "[INFO] Accelerate の設定を行います..."
-accelerate config default
+echo "[INFO] Accelerate のインストールと設定を行います..."
+pip install accelerate --quiet && echo "[INFO] ✅ Accelerate のインストール完了"
+
+# 設定ファイルの権限修正
+ACCELERATE_CONFIG_DIR="${HOME}/.cache/huggingface/accelerate"
+mkdir -p "$ACCELERATE_CONFIG_DIR"
+chmod -R 777 "$ACCELERATE_CONFIG_DIR"
+
+# Accelerate 設定
+if command -v accelerate &> /dev/null; then
+    echo "[INFO] Accelerate 設定を実行します..."
+    HF_HOME="$ACCELERATE_CONFIG_DIR" accelerate config default
+else
+    echo "[ERROR] accelerate が見つかりません。インストールに失敗した可能性があります。"
+    exit 1
+fi
+
 
 # ================================
 # 8. デフォルトモデルのクローン
@@ -151,26 +186,57 @@ if [ ! -d "$DEFAULT_MODEL_DIR" ]; then
         echo "[INFO] クローンを開始します..."
 
         # 親ディレクトリを作成
-        mkdir -p "$(dirname "$DEFAULT_MODEL_DIR")"
+        echo "[INFO] 親ディレクトリを作成します: $DEFAULT_MODEL_DIR"
+        mkdir -p "$DEFAULT_MODEL_DIR"
+
+        # 作成成功か確認
+        if [ ! -d "$DEFAULT_MODEL_DIR" ]; then
+            echo "[ERROR] 親ディレクトリの作成に失敗しました: $DEFAULT_MODEL_DIR"
+            exit 1
+        fi
 
         # モデルのクローン
-        python -c "
+        python$REQUIRED_PYTHON_VERSION - <<END
 from huggingface_hub import snapshot_download
+import os
 
-# モデルのクローン
-snapshot_download(repo_id='$DEFAULT_MODEL_REPO', local_dir='$DEFAULT_MODEL_DIR', resume_download=True)
+try:
+    # 確認用ログ
+    print("[INFO] snapshot_download を開始します。")
+    print(f"[DEBUG] repo_id: '$DEFAULT_MODEL_REPO'")
+    print(f"[DEBUG] local_dir: '$DEFAULT_MODEL_DIR'")
 
-# モデルパスの保存
-LAST_MODEL_PATH_FILE = '.last_model_path'
-with open(LAST_MODEL_PATH_FILE, 'w') as f:
-    f.write('$DEFAULT_MODEL_DIR')
-" && echo "[INFO] モデルのクローンとパスの保存が完了しました: $DEFAULT_MODEL_DIR"
+    # モデルのクローン
+    snapshot_download(
+        repo_id='$DEFAULT_MODEL_REPO', 
+        local_dir='$DEFAULT_MODEL_DIR', 
+        resume_download=True,
+        cache_dir=os.path.expanduser("~/.cache/huggingface")  # キャッシュディレクトリ
+    )
+
+    # モデルパスの保存
+    LAST_MODEL_PATH_FILE = '.last_model_path'
+    with open(LAST_MODEL_PATH_FILE, 'w') as f:
+        f.write('$DEFAULT_MODEL_DIR')
+
+    print("[INFO] モデルのクローンとパスの保存が完了しました: $DEFAULT_MODEL_DIR")
+
+except Exception as e:
+    print(f"[ERROR] モデルのクローンに失敗しました: {e}")
+    exit(1)
+END
+
     else
         echo "[INFO] モデルのクローンをスキップしました。"
     fi
 else
     echo "[INFO] デフォルトモデルは既に存在します: $DEFAULT_MODEL_DIR"
 fi
+
+sudo chown -R $USER /datadrive/hf_model
+sudo chmod -R u+w /datadrive/hf_model
+
+
 
 # ================================
 # 9. アプリケーションの起動
@@ -179,6 +245,6 @@ export PYTHONWARNINGS="ignore::FutureWarning"
 export CUDA_VISIBLE_DEVICES=""
 
 echo "[INFO] アプリケーションを起動します..."
-python -m med_rlhf.main
+python$REQUIRED_PYTHON_VERSION -m med_rlhf.main
 
 echo "[INFO] 処理が完了しました。"

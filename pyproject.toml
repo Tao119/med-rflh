@@ -12,34 +12,36 @@ requires-python = ">=3.11"
 # 共通依存関係
 dependencies = [
     "transformers==4.35.0",
-    "peft==0.6.1",
-    "accelerate==0.23.0",
-    "datasets==2.13.0",
-    "python-dotenv==1.0.0",
-    "trl==0.5.0",
-    "huggingface_hub==0.17.1",
+    "peft",
+    "accelerate",
+    "datasets",
+    "python-dotenv",
+    "trl",
+    " huggingface_hub<0.18,>=0.16.4",
     "scipy>=1.10.0",
     "tqdm>=4.65.0",
-    "sentencepiece==0.1.99",
-    "protobuf==3.20.3",
-    "wandb==0.16.3"
+    "sentencepiece",
+    "protobuf",
+    "wandb",
+    "numpy>=1.24,<2.0"
 ]
 
 # オプション依存関係
 [project.optional-dependencies]
-cpu = ["torch>=2.6.0,<2.7.0"]
+cpu = [
+    "torch>=2.6.0,<2.7.0"
+]
 gpu = [
     "torch>=2.6.0,<2.7.0",
-    "bitsandbytes==0.42.0",
-    "xformers==0.0.21",
-    "deepspeed==0.10.3"
+    "bitsandbytes",
+    "deepspeed",
+    "triton",
+    "flash-attn" 
 ]
 
 # setuptools の設定
 [tool.setuptools]
-# パッケージ名の指定
 packages = ["med_rlhf"]
 
-# パッケージ内のデータファイルも含める場合
 [tool.setuptools.package-data]
 "med_rlhf" = ["**/*.json", "**/*.yaml", "**/*.txt"]
