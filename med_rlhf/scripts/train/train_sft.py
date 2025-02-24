@@ -1,12 +1,20 @@
+import os
+import sys
+import subprocess
 from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments, DataCollatorForLanguageModeling
 from datasets import load_dataset
 from med_rlhf.scripts.utils.model_utils import resolve_model_path, save_last_model_path, load_last_model_path
-import os
 
 
 def train_sft():
     """Supervised Fine-Tuning (SFT) の実行"""
     try:
+        # Check if script is run under Accelerate
+        if not os.getenv("ACCELERATE_PROCESS_ID"):
+            print("[INFO] Accelerate 経由で再実行します...")
+            subprocess.run(["accelerate", "launch", sys.argv[0]])
+            return
+
         # パラメータ入力
         last_model_path = load_last_model_path()
         user_model_input = input(
@@ -17,7 +25,9 @@ def train_sft():
 
         data_path = input(
             "学習データのパス (デフォルト: data/sft_data.jsonl): ").strip() or "data/sft_data.jsonl"
-        output_dir = "models/trained/sft_model"
+        output_name = input(
+            "出力モデル名 (デフォルト: sft_model): ").strip() or "sft_model"
+        output_dir = f"models/trained/{output_name}"
         os.makedirs(output_dir, exist_ok=True)
 
         epochs = int(input("エポック数 (デフォルト: 3): ").strip() or 3)
@@ -55,7 +65,8 @@ def train_sft():
             logging_dir='./logs',
             logging_steps=10,
             save_strategy="epoch",
-            save_total_limit=2
+            save_total_limit=2,
+            fp16=True  # Mixed precision training
         )
 
         # トレーナーの作成
@@ -77,3 +88,7 @@ def train_sft():
 
     except Exception as e:
         print(f"[ERROR] SFT 学習中にエラーが発生しました: {e}")
+
+
+if __name__ == "__main__":
+    train_sft()

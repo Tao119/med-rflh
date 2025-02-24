@@ -7,6 +7,7 @@ from med_rlhf.scripts.upload.upload_model import upload_model
 from med_rlhf.scripts.test.test_model import test_model
 from med_rlhf.scripts.delete.delete_model import delete_model  # 追加
 
+
 def main_menu():
     """CLI メニューを表示してコマンドを実行"""
     while True:
@@ -42,6 +43,7 @@ def main_menu():
         except Exception as e:
             print(f"[ERROR] メニュー操作中に予期しないエラーが発生しました: {e}")
 
+
 def main():
     try:
         main_menu()
@@ -49,6 +51,7 @@ def main():
         print("\n[INFO] プログラムを終了します。")
     except Exception as e:
         print(f"[ERROR] 予期しないエラー: {e}")
+
 
 if __name__ == "__main__":
     main()
